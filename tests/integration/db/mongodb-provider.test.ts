@@ -323,8 +323,11 @@ const createMockDb = (dbName = "testdb") => ({
     }
     if (cmd.validate || cmd.compact) {
       const name = String(cmd.validate ?? cmd.compact);
-      // The server refuses both on a view, with this sentence for `validate` (#1408).
-      if (isMockView(name, dbName)) throw mongoServerError(166, "Cannot validate a view");
+      // The server refuses both on a view, code 166 with these sentences (measured on
+      // 7.0.43, 8.0.32 and 8.2.12, #1408).
+      if (isMockView(name, dbName)) {
+        throw mongoServerError(166, cmd.validate ? "Cannot validate a view" : "can't compact a view");
+      }
       const refusal = mockMaintenanceRefusal[name];
       if (refusal !== undefined) throw refusal;
       return cmd.validate ? { ok: 1, valid: true } : { ok: 1 };
