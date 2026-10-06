@@ -206,8 +206,11 @@ Caveats baked into this approach:
 - **Nullable means "absent or `null` in at least one sampled document"** (#1456). MongoDB declares
   no nullability, and a field is empty in two ways, so inference counts in how many sampled
   documents each path is present and marks it nullable when that is fewer than the sample, or when
-  a `null` was seen. `_id` is never nullable. Before #1456 only a `null` counted, so a field most
-  documents lack read "Nullable: No" in Docs and `NN` in the ERD.
+  a `null` was seen. `_id` follows the same rule: in an ordinary collection it is present and
+  non-null in every document, so it reads not nullable, but a collection holding `{_id: null}`, or
+  a `$group` view whose `_id` is `null`, reads nullable, because that is what the sample shows.
+  Before #1456 only a `null` counted, so a field most documents lack read "Nullable: No" in Docs and
+  `NN` in the ERD.
 - **The profiler counts the same two cases as null.** In Profile Collection a sampled value that
   is absent or `null` adds to `nullCount`, and `null` is not a distinct value. The samples still
   show an explicit null, as `NULL`. Before #1456 documents `{a: 1}`, `{a: null}`, `{}` reported

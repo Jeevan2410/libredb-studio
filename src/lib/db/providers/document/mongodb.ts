@@ -1326,6 +1326,9 @@ export class MongoDBProvider extends BaseDatabaseProvider {
     // In how many sampled documents each path is present. MongoDB declares no
     // nullability, so a field is empty in two ways: absent, or present as `null`.
     // Counting only the second marked a field most documents lack as NOT NULL (#1456).
+    // `_id` follows the same rule: present and non-null in every document of an ordinary
+    // collection, so not nullable there, but a `{_id: null}` document or a `$group` view
+    // answers null, and a fixed "never nullable" would contradict the sample.
     const fieldPresence = new Map<string, number>();
 
     for (const doc of docs) {
@@ -1341,9 +1344,7 @@ export class MongoDBProvider extends BaseDatabaseProvider {
       columns.push({
         name: fieldName,
         type,
-        nullable:
-          fieldName !== "_id" &&
-          ((fieldPresence.get(fieldName) ?? 0) < docs.length || types.has("null") || types.has("undefined")),
+        nullable: (fieldPresence.get(fieldName) ?? 0) < docs.length || types.has("null") || types.has("undefined"),
         isPrimary: fieldName === "_id",
         defaultValue: undefined,
       });
