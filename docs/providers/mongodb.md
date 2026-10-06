@@ -203,6 +203,15 @@ Caveats baked into this approach:
   60 subdocuments of 10 fields each is 661 rows in the schema tree and 661 lines in an agent run's
   context window, for one collection.
 - A field with multiple observed types is reported as `mixed(a|b)`. `_id` is marked primary.
+- **Nullable means "absent or `null` in at least one sampled document"** (#1456). MongoDB declares
+  no nullability, and a field is empty in two ways, so inference counts in how many sampled
+  documents each path is present and marks it nullable when that is fewer than the sample, or when
+  a `null` was seen. `_id` is never nullable. Before #1456 only a `null` counted, so a field most
+  documents lack read "Nullable: No" in Docs and `NN` in the ERD.
+- **The profiler counts the same two cases as null.** In Profile Collection a sampled value that
+  is absent or `null` adds to `nullCount`, and `null` is not a distinct value. The samples still
+  show an explicit null, as `NULL`. Before #1456 documents `{a: 1}`, `{a: null}`, `{}` reported
+  1 null and 2 distinct values for `a`; they now report 2 nulls and 1.
 
 ### 3.4 `find` is capped at 100; `aggregate` is not
 
