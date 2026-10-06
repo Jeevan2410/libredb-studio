@@ -662,7 +662,13 @@ no `LIMIT`, no `;`. The terminator measurement above is unaffected and still the
 declaration.
 
 A semicolon a **user** types is unaffected by that declaration and still runs, because the editor's
-statement reader strips the terminator before the statement is sent. The raw `POST /api/db/query`
+statement reader strips the terminator before the statement is sent. That holds for a **selection**
+too since #1414: a selection used to be sent exactly as selected, so selecting
+`SELECT customer FROM orders WHERE qty = 1 LIMIT 2;` with its `;` answered HTTP 400 `extraneous input
+';' expecting <EOF>` (Elasticsearch 9.5.3) while the same line run from the caret worked. A selection
+that is one statement is now read through the same splitter on an engine with
+`statementTerminator: "none"`; a `;` inside a literal is kept, and a multi-statement selection is
+still sent as selected. The raw `POST /api/db/query`
 passes text through untouched, so a `;` sent there is refused by the engine — which is the honest
 answer for an API that promises no rewriting.
 
