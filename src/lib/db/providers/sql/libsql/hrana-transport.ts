@@ -34,6 +34,7 @@
 import { endpointUrl, type HttpOrigin, httpOrigin, rejectRedirect } from "@/lib/db/http/endpoint";
 import { DatabaseConfigError } from "@/lib/db/errors";
 import { httpTransportFetch } from "@/lib/db/http/egress-policy";
+import { describeFetchFailure } from "@/lib/db/http/fetch-failure";
 import type { DatabaseConnection } from "@/lib/db/types";
 import { isSQLiteInt64Digits } from "../sqlite-int64";
 import {
@@ -525,8 +526,7 @@ export class LibSQLHranaTransport implements LibSQLTransport {
       });
     } catch (cause) {
       if (cause instanceof DatabaseConfigError) throw cause;
-      const reason = cause instanceof Error ? cause.message : String(cause);
-      throw new LibSQLTransportError(`libSQL request failed: ${reason}`, 0);
+      throw new LibSQLTransportError(`libSQL request failed: ${describeFetchFailure(cause, url)}`, 0);
     }
 
     const text = await response.text();
