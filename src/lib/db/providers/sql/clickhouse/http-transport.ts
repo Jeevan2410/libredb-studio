@@ -25,7 +25,7 @@
 import { endpointUrl, type HttpOrigin, httpOrigin, rejectRedirect } from "@/lib/db/http/endpoint";
 import { DatabaseConfigError } from "@/lib/db/errors";
 import { httpTransportFetch } from "@/lib/db/http/egress-policy";
-import { describeFetchFailure } from "@/lib/db/http/fetch-failure";
+import { describeFetchFailure, networkFailureKind } from "@/lib/db/http/fetch-failure";
 import type { DatabaseConnection } from "@/lib/db/types";
 import {
   type ClickHouseQueryOptions,
@@ -341,7 +341,12 @@ function midstreamError(outcome: HttpOutcome): ClickHouseTransportError | null {
 
 /** A failure that never reached the server, or never came back from it. */
 function transportError(cause: unknown, url: string): ClickHouseTransportError {
-  return new ClickHouseTransportError(`ClickHouse request failed: ${describeFetchFailure(cause, url)}`, 0);
+  return new ClickHouseTransportError(
+    `ClickHouse request failed: ${describeFetchFailure(cause, url)}`,
+    0,
+    undefined,
+    networkFailureKind(cause),
+  );
 }
 
 // ============================================================================

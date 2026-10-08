@@ -75,6 +75,30 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Which way a request failed before any answer came back, for providers that classify by it. */
+export type NetworkFailureKind = "refused" | "not-found" | "timed-out" | "reset" | "tls";
+
+function kindOfCode(code: string): NetworkFailureKind | undefined {
+  if (REFUSED.has(code)) return "refused";
+  if (NOT_FOUND.has(code)) return "not-found";
+  if (TIMED_OUT.has(code)) return "timed-out";
+  if (RESET.has(code)) return "reset";
+  if (isTlsFailureCode(code)) return "tls";
+  return undefined;
+}
+
+/**
+ * The kind of network failure behind `error`, read from its code, or undefined when the runtime
+ * named none of these. A deadline or a cancellation (`DOMException`) is not a network failure.
+ * Providers classify by this rather than by the wording of `describeFetchFailure`: its "timed out"
+ * means the connection never opened, which a message-based mapping would read as a slow query.
+ */
+export function networkFailureKind(error: unknown): NetworkFailureKind | undefined {
+  if (error instanceof DOMException) return undefined;
+  const found = failureWithCode(error);
+  return found === undefined ? undefined : kindOfCode(found.code);
+}
+
 /**
  * The reason a request to `url` failed, as a sentence fragment a transport prefixes with its own
  * "<Engine> request failed: ". Falls back to the error's message, and its cause's, when the runtime
@@ -91,13 +115,21 @@ export function describeFetchFailure(error: unknown, url: string): string {
     return cause === undefined ? messageOf(error) : `${messageOf(error)}: ${cause}`;
   }
   const { failure, code } = found;
-  if (REFUSED.has(code)) return `connection refused at ${addressesOf(failure, target)}`;
-  if (NOT_FOUND.has(code)) return `host ${textOf(failure.hostname) ?? target.hostname} not found (${code})`;
-  if (TIMED_OUT.has(code)) return `connection to ${addressesOf(failure, target)} timed out (${code})`;
-  if (RESET.has(code)) return `connection to ${addressesOf(failure, target)} was reset (${code})`;
-  if (isTlsFailureCode(code)) {
-    const reason = textOf(failure.message);
-    return `TLS connection to ${target.host} failed (${code}${reason === undefined ? "" : `: ${reason}`})`;
+  switch (kindOfCode(code)) {
+    case "refused":
+      return `connection refused at ${addressesOf(failure, target)}`;
+    case "not-found":
+      return `host ${textOf(failure.hostname) ?? target.hostname} not found (${code})`;
+    case "timed-out":
+      return `connection to ${addressesOf(failure, target)} timed out (${code})`;
+    case "reset":
+      return `connection to ${addressesOf(failure, target)} was reset (${code})`;
+    case "tls":
+      // The code only, as `failureFrom` in node-transport does. The runtime's reason comes from the
+      // server: for ERR_TLS_CERT_ALTNAME_INVALID it lists the certificate's internal host names and
+      // addresses, and for a record-layer error it is OpenSSL's multi-line dump.
+      return `TLS connection to ${target.host} failed (${code})`;
+    default:
+      return `${textOf(failure.message) ?? messageOf(error)} (${code})`;
   }
-  return `${textOf(failure.message) ?? messageOf(error)} (${code})`;
 }
