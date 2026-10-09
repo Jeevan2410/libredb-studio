@@ -4213,10 +4213,11 @@ describe("MySQLProvider EXPLAIN grammar probe", () => {
       await provider.connect();
 
       expect(provider.getCapabilities().explainFormat).toBe("mysql-text");
-      expect(explainProbeCalls().map((c) => c.sql).slice(2)).toEqual([
-        "EXPLAIN FORMAT=JSON SELECT * FROM `customers` LIMIT 0",
-        "EXPLAIN SELECT * FROM `customers` LIMIT 0",
-      ]);
+      expect(
+        explainProbeCalls()
+          .map((c) => c.sql)
+          .slice(2),
+      ).toEqual(["EXPLAIN FORMAT=JSON SELECT * FROM `customers` LIMIT 0", "EXPLAIN SELECT * FROM `customers` LIMIT 0"]);
     });
 
     test("the table's name is quoted as an identifier", async () => {
